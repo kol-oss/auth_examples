@@ -1,13 +1,16 @@
 const express = require('express');
+const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+
+dotenv.config();
 
 const PORT = 3000;
 const TOKEN_HEADER_KEY = 'Authorization';
 
-const BCRYPT_SALT_ROUNDS = 10;
-const JWT_SECRET_KEY = '40e1c6aba34f6a0bef5f6b9923b4a647';
-const JWT_EXPIRATION_TIME = '10m';
+const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
+const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
+const JWT_EXPIRATION_TIME = process.env.JWT_EXPIRATION_TIME || '10m';
 
 const USERS = [
     {
