@@ -7,6 +7,7 @@ dotenv.config();
 
 const PORT = 3000;
 const TOKEN_HEADER_KEY = 'Authorization';
+const JWT_TOKEN_PREFIX = "Bearer ";
 
 const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
 const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
@@ -28,11 +29,22 @@ const USERS = [
 const app = express();
 app.use(express.json());
 
-app.use((req, _, next) => {
-    const token = req.header(TOKEN_HEADER_KEY);
-    if (!token) return next();
+app.use((req, res, next) => {
+    const authHeader = req.header(TOKEN_HEADER_KEY);
+    if (!authHeader) return next();
 
-    req.user = jwt.verify(token, JWT_SECRET_KEY);
+    console.log('Authentication header: ' + authHeader);
+    if (!authHeader.startsWith(JWT_TOKEN_PREFIX)) {
+        res.status(400).send('Invalid JWT token');
+        return;
+    }
+
+    const token = authHeader.slice(7).trim();
+    try {
+        req.user = jwt.verify(token, JWT_SECRET_KEY);
+    } catch (err) {
+        console.error('JWT verify error:', err.message);
+    }
     next();
 });
 
@@ -60,7 +72,8 @@ app.post('/api/login', async (req, res) => {
 
         if (match) {
             const payload = {login: user.login, username: user.username};
-            const token = jwt.sign(payload, JWT_SECRET_KEY, {expiresIn: JWT_EXPIRATION_TIME});
+            const signed = jwt.sign(payload, JWT_SECRET_KEY, {expiresIn: JWT_EXPIRATION_TIME});
+            const token = JWT_TOKEN_PREFIX + signed;
 
             return res.json({token});
         }
