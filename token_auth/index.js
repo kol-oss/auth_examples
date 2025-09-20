@@ -72,8 +72,7 @@ app.post('/api/login', async (req, res) => {
 
         if (match) {
             const payload = {login: user.login, username: user.username};
-            const signed = jwt.sign(payload, JWT_SECRET_KEY, {expiresIn: JWT_EXPIRATION_TIME});
-            const token = JWT_TOKEN_PREFIX + signed;
+            const token = jwt.sign(payload, JWT_SECRET_KEY, {expiresIn: JWT_EXPIRATION_TIME});
 
             return res.json({token});
         }

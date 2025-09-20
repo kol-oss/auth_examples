@@ -173,7 +173,9 @@
                     password
                 }
             }).then((response) => {
-                const { username } =  response.data;
+                const { token } =  response.data;
+                response.data.token = 'Bearer ' + token;
+
                 sessionStorage.setItem('session', JSON.stringify(response.data));
                 location.reload();
             }).catch((response) => {
