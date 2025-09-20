@@ -7,7 +7,7 @@ dotenv.config();
 
 const PORT = 3000;
 const TOKEN_HEADER_KEY = 'Authorization';
-const JWT_TOKEN_PREFIX = "Bearer ";
+const JWT_TOKEN_PREFIX = 'Bearer ';
 
 const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
 const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
