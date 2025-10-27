@@ -3,7 +3,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const {register, login, refresh, logout} = require('./handlers');
+const {register, login, refresh, logout, getCurrentUser} = require('./handlers');
 const {authenticated} = require('./jwt');
 const cookieParser = require('cookie-parser');
 
@@ -84,6 +84,20 @@ app.post('/api/refresh', async (req, res) => {
 
     res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, {httpOnly: true, secure: true});
     return res.status(200).send({access_token, expires_in});
+});
+
+app.get('/api/me', authenticated, async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader.split(' ')[1];
+
+    try {
+        const userInfo = await getCurrentUser(accessToken);
+        return res.status(200).json(userInfo);
+    } catch (err) {
+        console.log(err);
+
+        return res.status(401).send(err.message);
+    }
 });
 
 app.listen(PORT, () => {

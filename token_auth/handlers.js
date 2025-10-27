@@ -61,6 +61,20 @@ async function refresh(refreshToken) {
     }
 }
 
+async function getCurrentUser(accessToken) {
+    try {
+        const response = await fetch(`https://${DOMAIN}/userinfo`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        });
+
+        return await response.json();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 module.exports = {
-    register, login, logout, refresh,
+    register, login, logout, refresh, getCurrentUser
 };

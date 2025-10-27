@@ -157,27 +157,40 @@
     } catch (e) {
     }
 
-    if (session?.token) {
+    if (session?.access_token) {
         createSession();
     }
 
     function createSession() {
-        axios.get('/', {headers: {Authorization: session.access_token}})
+
+        axios.get('/api/me', {
+            headers: {
+                Authorization: session.access_token
+            }
+        })
             .then(res => {
-                showUserInfo(res.data.username);
+                showUserInfo(res.data);
                 startTokenExpirationInterval();
             })
             .catch(() => sessionStorage.removeItem('session'));
     }
 
-    function showUserInfo(username) {
+    function showUserInfo(user) {
         loginForm.remove();
         registerForm.remove();
         toggleForm.remove();
         loginErrorMsg.remove();
         loginHeader.remove();
 
-        mainHolder.append(`Hello ${username || 'user'}!`);
+        const userInfoDiv = document.createElement('div');
+        userInfoDiv.style.textAlign = 'center';
+        userInfoDiv.style.margin = '10px';
+        userInfoDiv.innerHTML = `
+            <h2>Hello ${user.name || user.email || 'user'}!</h2>
+            <p><strong>Email:</strong> ${user.email || 'N/A'}</p>
+            <p><strong>Sub:</strong> ${user.sub}</p>
+        `;
+        mainHolder.appendChild(userInfoDiv);
 
         logoutLink.style.opacity = 1;
     }
