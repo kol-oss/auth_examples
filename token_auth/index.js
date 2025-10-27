@@ -1,52 +1,18 @@
 const express = require('express');
-const dotenv = require('dotenv');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 
+const dotenv = require('dotenv');
 dotenv.config();
 
+const {register, login, refresh, logout} = require('./handlers');
+const {authenticated} = require('./jwt');
+const cookieParser = require('cookie-parser');
+
 const PORT = 3000;
-const TOKEN_HEADER_KEY = 'Authorization';
-const JWT_TOKEN_PREFIX = 'Bearer ';
-
-const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
-const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
-const JWT_EXPIRATION_TIME = process.env.JWT_EXPIRATION_TIME || '10m';
-
-const USERS = [
-    {
-        login: 'Login',
-        password: bcrypt.hashSync('Password', BCRYPT_SALT_ROUNDS),
-        username: 'Username',
-    },
-    {
-        login: 'Login1',
-        password: bcrypt.hashSync('Password1', BCRYPT_SALT_ROUNDS),
-        username: 'Username1',
-    }
-];
+const REFRESH_TOKEN_COOKIE = 'refresh_token';
 
 const app = express();
 app.use(express.json());
-
-app.use((req, res, next) => {
-    const authHeader = req.header(TOKEN_HEADER_KEY);
-    if (!authHeader) return next();
-
-    console.log('Authentication header: ' + authHeader);
-    if (!authHeader.startsWith(JWT_TOKEN_PREFIX)) {
-        res.status(400).send('Invalid JWT token');
-        return;
-    }
-
-    const token = authHeader.slice(7).trim();
-    try {
-        req.user = jwt.verify(token, JWT_SECRET_KEY);
-    } catch (err) {
-        console.error('JWT verify error:', err.message);
-    }
-    next();
-});
+app.use(cookieParser());
 
 app.get('/', (req, res) => {
     if (req.user) {
@@ -59,26 +25,65 @@ app.get('/', (req, res) => {
     res.sendFile(`${__dirname}/index.html`);
 });
 
-app.get('/logout', (_, res) => {
-    res.redirect('/');
+app.post('/logout', authenticated, async (req, res) => {
+    const refreshToken = req.cookies?.refresh_token;
+    if (!refreshToken) {
+        return res.status(401).send('refresh_token cookie is empty');
+    }
+
+    await logout(refreshToken);
+    res.clearCookie(REFRESH_TOKEN_COOKIE, {httpOnly: true, secure: true});
+
+    res.status(204).end();
+});
+
+app.post('/api/register', async (req, res) => {
+    const {login: email, password} = req.body;
+    if (!email || !password) {
+        return res.status(400).send('Invalid email or password');
+    }
+
+    const apiResponse = await register(email, password);
+    return res.status(200).send(apiResponse.data);
 });
 
 app.post('/api/login', async (req, res) => {
-    const {login, password} = req.body;
-    const user = USERS.find(user => user.login === login);
-
-    if (user) {
-        const match = await bcrypt.compare(password, user.password);
-
-        if (match) {
-            const payload = {login: user.login, username: user.username};
-            const token = jwt.sign(payload, JWT_SECRET_KEY, {expiresIn: JWT_EXPIRATION_TIME});
-
-            return res.json({token});
-        }
+    const {login: email, password} = req.body;
+    if (!email || !password) {
+        return res.status(400).send('Invalid email or password');
     }
 
-    res.status(401).send();
+    let apiResponse;
+    try {
+        apiResponse = await login(email, password);
+    } catch (err) {
+        return res.status(401).send(err.message);
+    }
+
+    const {access_token, refresh_token, expires_in} = apiResponse.data;
+    if (!access_token || !refresh_token) {
+        return res.status(401).send('access_token or refresh_token value is empty');
+    }
+
+    res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, {httpOnly: true, secure: true});
+    return res.status(200).send({access_token, refresh_token, expires_in});
+});
+
+app.post('/api/refresh', async (req, res) => {
+    const oldRefreshToken = req.cookies?.refresh_token;
+    if (!oldRefreshToken) {
+        return res.status(401).send('refresh_token cookie is empty');
+    }
+
+    const apiResponse = await refresh(oldRefreshToken);
+    const {access_token, refresh_token, expires_in} = apiResponse.data;
+
+    if (!access_token || !refresh_token) {
+        return res.status(401).send('access_token or refresh_token value after refreshing is empty');
+    }
+
+    res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, {httpOnly: true, secure: true});
+    return res.status(200).send({access_token, expires_in});
 });
 
 app.listen(PORT, () => {
