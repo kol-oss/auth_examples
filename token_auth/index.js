@@ -66,7 +66,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, {httpOnly: true, secure: true});
-    return res.status(200).send({access_token, refresh_token, expires_in});
+    return res.status(200).send({access_token, expires_in});
 });
 
 app.post('/api/refresh', async (req, res) => {
