@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const {register, login, refresh, logout, getCurrentUser} = require('./handlers');
-const {authenticated} = require('./jwt');
+const {authenticated, decrypt} = require('./auth');
 const cookieParser = require('cookie-parser');
 
 const PORT = 3000;
@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
     res.sendFile(`${__dirname}/index.html`);
 });
 
-app.post('/logout', authenticated, async (req, res) => {
+app.post('/logout', decrypt(), authenticated(), async (req, res) => {
     const refreshToken = req.cookies?.refresh_token;
     if (!refreshToken) {
         return res.status(401).send('refresh_token cookie is empty');
@@ -86,7 +86,7 @@ app.post('/api/refresh', async (req, res) => {
     return res.status(200).send({access_token, expires_in});
 });
 
-app.get('/api/me', authenticated, async (req, res) => {
+app.get('/api/me', decrypt(), authenticated(), async (req, res) => {
     const authHeader = req.headers.authorization;
     const accessToken = authHeader.split(' ')[1];
 
