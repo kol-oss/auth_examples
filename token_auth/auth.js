@@ -6,6 +6,7 @@ const AUDIENCE = process.env.AUDIENCE;
 
 const TOKEN_PREFIX = 'Bearer ';
 const PRIVATE_KEY_PEM = readFileSync('./keys/key.pem', 'utf8');
+const ALGORITHM = 'RSA-OAEP-512';
 
 function authenticated() {
     return auth({
@@ -17,7 +18,7 @@ function authenticated() {
 async function decryptToken(encryptedToken) {
     const { importPKCS8, compactDecrypt } = await import('jose');
 
-    const privateKey = await importPKCS8(PRIVATE_KEY_PEM, 'RSA-OAEP-512');
+    const privateKey = await importPKCS8(PRIVATE_KEY_PEM, ALGORITHM);
     const {plaintext} = await compactDecrypt(encryptedToken, privateKey);
 
     return new TextDecoder().decode(plaintext);

@@ -57,6 +57,7 @@ app.post('/api/login', async (req, res) => {
     try {
         apiResponse = await login(email, password);
     } catch (err) {
+        console.log(err);
         return res.status(401).send(err.message);
     }
 
@@ -95,7 +96,6 @@ app.get('/api/me', decrypt(), authenticated(), async (req, res) => {
         return res.status(200).json(userInfo);
     } catch (err) {
         console.log(err);
-
         return res.status(401).send(err.message);
     }
 });
