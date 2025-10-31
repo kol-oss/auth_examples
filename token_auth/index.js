@@ -31,34 +31,6 @@ app.get('/api/login', async (req, res) => {
     res.redirect(loginUri.toString());
 });
 
-app.get('/api/logout', async (req, res) => {
-    const logoutUri = getLogoutUri();
-    console.log('Redirecting logout to ' + logoutUri);
-
-    res.clearCookie(REFRESH_TOKEN_COOKIE, {httpOnly: true, secure: true});
-    res.redirect(logoutUri.toString());
-});
-
-app.post('/api/refresh', async (req, res) => {
-    const {refreshToken} = req.body;
-
-    let apiResponse;
-    try {
-        apiResponse = refresh(refreshToken);
-    } catch (error) {
-        res.status(401).json({message: 'Refresh failed: ' + error.message});
-        return;
-    }
-
-    const {access_token, refresh_token, expires_in} = apiResponse.data;
-    if (!access_token || !refresh_token) {
-        return res.status(401).send({message: 'accessTokenFromParams or refresh_token value after refreshing is empty'});
-    }
-
-    res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, {httpOnly: true, secure: true});
-    return res.status(200).send({access_token, expires_in});
-});
-
 app.get('/api/login/callback', async (req, res) => {
     const {code} = req.query;
     console.log("Received code " + code);
@@ -85,6 +57,34 @@ app.get('/api/login/callback', async (req, res) => {
 
     res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, {httpOnly: true, secure: true});
     res.redirect(url.toString());
+});
+
+app.get('/api/logout', async (req, res) => {
+    const logoutUri = getLogoutUri();
+    console.log('Redirecting logout to ' + logoutUri);
+
+    res.clearCookie(REFRESH_TOKEN_COOKIE, {httpOnly: true, secure: true});
+    res.redirect(logoutUri.toString());
+});
+
+app.post('/api/refresh', async (req, res) => {
+    const {refreshToken} = req.body;
+
+    let apiResponse;
+    try {
+        apiResponse = refresh(refreshToken);
+    } catch (error) {
+        res.status(401).json({message: 'Refresh failed: ' + error.message});
+        return;
+    }
+
+    const {access_token, refresh_token, expires_in} = apiResponse.data;
+    if (!access_token || !refresh_token) {
+        return res.status(401).send({message: 'accessTokenFromParams or refresh_token value after refreshing is empty'});
+    }
+
+    res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, {httpOnly: true, secure: true});
+    return res.status(200).send({access_token, expires_in});
 });
 
 app.get('/api/validate', decrypt(), authenticated(), async (req, res) => {
