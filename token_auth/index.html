@@ -4,33 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Auth0 Login</title>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 </head>
 
 <body>
 <main id="main-holder">
-    <a href="/logout" id="logout">Logout</a>
+    <a href="#" id="logout">Logout</a>
 
     <h1 id="login-header">Login</h1>
 
     <div id="login-error-msg-holder">
-        <p id="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
+        <p id="login-error-msg">Login failed <span id="error-msg-second-line">try again later</span></p>
     </div>
 
-    <form id="login-form" action="/api/login" method="post">
-        <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Username">
-        <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
-        <input type="submit" value="Login" id="login-form-submit">
-    </form>
-
-    <form id="register-form" action="/api/register" method="post" style="display:none;">
-        <input type="text" name="login" id="reg-username-field" class="login-form-field" placeholder="Username">
-        <input type="password" name="password" id="reg-password-field" class="login-form-field" placeholder="Password">
-        <input type="submit" value="Register" id="register-form-submit">
-    </form>
-
-    <a href="#" id="toggle-form">Don't have an account? Register</a>
+    <div id="login-container">
+        <button id="login-btn" class="login-form-field">Login with Auth0</button>
+    </div>
 </main>
 </body>
 
@@ -89,13 +79,6 @@
         display: block;
     }
 
-    #login-form, #register-form {
-        align-self: flex-start;
-        display: grid;
-        justify-items: center;
-        align-items: center;
-    }
-
     .login-form-field::placeholder {
         color: #3a3a3a;
     }
@@ -106,92 +89,80 @@
         margin-bottom: 10px;
         border-radius: 3px;
         outline: none;
-        padding: 0 0 5px 5px;
+        padding: 7px 15px;
     }
 
-    #login-form-submit, #register-form-submit {
-        width: 100%;
-        padding: 7px;
-        border: none;
-        border-radius: 5px;
+    #login-btn {
+        background-color: #3a3a3a;
         color: white;
         font-weight: bold;
-        background-color: #3a3a3a;
+        border: none;
+        border-radius: 5px;
+        padding: 10px 20px;
         cursor: pointer;
         outline: none;
     }
 </style>
 
 <script>
-    // in what timeout before token expiration refreshing process can start (ms)
     const REFRESH_DIFF = 10000;
-    // how often current token expiration is checked (ms)
     const CHECK_EXPIRATION_TIMEOUT = 5000;
 
-    const loginForm = document.getElementById('login-form');
-    const loginButton = document.getElementById('login-form-submit');
-    const registerForm = document.getElementById('register-form');
-    const registerButton = document.getElementById('register-form-submit');
-    const loginErrorMsg = document.getElementById('login-error-msg');
     const logoutLink = document.getElementById('logout');
-    const toggleForm = document.getElementById('toggle-form');
+    const loginErrorMsg = document.getElementById('login-error-msg');
     const mainHolder = document.getElementById('main-holder');
     const loginHeader = document.getElementById('login-header');
+    const loginBtn = document.getElementById('login-btn');
 
     let session = null;
     let refreshInterval = null;
-
-    toggleForm.addEventListener('click', e => {
-        e.preventDefault();
-
-        const showLogin = loginForm.style.display !== 'none';
-        loginForm.style.display = showLogin ? 'none' : 'grid';
-        registerForm.style.display = showLogin ? 'grid' : 'none';
-        toggleForm.textContent = showLogin ? 'Already have an account? Login' : 'Don\'t have an account? Register';
-        loginHeader.textContent = showLogin ? 'Register' : 'Login';
-        loginErrorMsg.style.opacity = 0;
-    });
 
     try {
         session = JSON.parse(sessionStorage.getItem('session'));
     } catch (e) {
     }
 
-    if (session?.access_token) {
-        createSession();
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessTokenFromParams = urlParams.get('access_token');
+
+    if (accessTokenFromParams) {
+        session = {
+            access_token: 'Bearer ' + accessTokenFromParams,
+            expires_in: JSON.parse(urlParams.get('expires_in'))
+        };
+        sessionStorage.setItem('session', JSON.stringify(session));
+        window.history.replaceState({}, document.title, '/');
+
+        startTokenExpirationInterval();
     }
 
-    function createSession() {
-        axios.get('/api/me', {
+    if (session?.access_token) {
+        loginHeader.textContent = 'Welcome Back!';
+        validateConnection();
+
+        loginBtn.style.opacity = '0';
+        logoutLink.style.opacity = '1';
+    }
+
+    function validateConnection() {
+        const accessDiv = document.createElement('div');
+        accessDiv.style.textAlign = 'center';
+        accessDiv.style.margin = '10px';
+
+        axios.get('/api/validate', {
             headers: {
                 Authorization: session.access_token
             }
         })
-            .then(res => {
-                showUserInfo(res.data);
-                startTokenExpirationInterval();
+            .then(_ => {
+                accessDiv.innerHTML = '<i>Connection is valid</i>';
             })
-            .catch(() => sessionStorage.removeItem('session'));
-    }
+            .catch(() => {
+                accessDiv.innerHTML = '<i>Connection is <b>invalid</b></i>';
+                sessionStorage.removeItem('session');
+            });
 
-    function showUserInfo(user) {
-        loginForm.remove();
-        registerForm.remove();
-        toggleForm.remove();
-        loginErrorMsg.remove();
-        loginHeader.remove();
-
-        const userInfoDiv = document.createElement('div');
-        userInfoDiv.style.textAlign = 'center';
-        userInfoDiv.style.margin = '10px';
-        userInfoDiv.innerHTML = `
-            <h2>Hello ${user.name || user.email || 'user'}!</h2>
-            <p><strong>Email:</strong> ${user.email || 'N/A'}</p>
-            <p><strong>Sub:</strong> ${user.sub}</p>
-        `;
-        mainHolder.appendChild(userInfoDiv);
-
-        logoutLink.style.opacity = 1;
+        mainHolder.appendChild(accessDiv);
     }
 
     function startTokenExpirationInterval() {
@@ -223,50 +194,18 @@
         }
     }
 
-    loginButton.addEventListener('click', e => {
+    loginBtn.addEventListener('click', async e => {
         e.preventDefault();
-
-        const login = loginForm.login.value;
-        const password = loginForm.password.value;
-
-        axios.post('/api/login', {login, password})
-            .then(res => {
-                res.data.access_token = 'Bearer ' + res.data.access_token;
-                session = res.data;
-
-                sessionStorage.setItem('session', JSON.stringify(session));
-                createSession();
-            })
-            .catch(() => {
-                loginErrorMsg.style.opacity = 1;
-            });
-    });
-
-    registerButton.addEventListener('click', e => {
-        e.preventDefault();
-
-        const login = registerForm.login.value;
-        const password = registerForm.password.value;
-
-        axios.post('/api/register', {login, password})
-            .then(() => {
-                alert(`User ${login} created`);
-                toggleForm.click();
-            })
-            .catch(() => {
-                loginErrorMsg.style.opacity = 1;
-            });
+        try {
+            window.location.href = '/api/login';
+        } catch (err) {
+            loginErrorMsg.style.opacity = 1;
+        }
     });
 
     logoutLink.addEventListener('click', async e => {
         e.preventDefault();
-
-        await axios.post('/logout', {}, {
-            withCredentials: true,
-            headers: {
-                Authorization: session?.access_token
-            }
-        });
+        window.location.href = '/api/logout';
 
         sessionStorage.removeItem('session');
         clearInterval(refreshInterval);
