@@ -6,75 +6,65 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const AUDIENCE = process.env.AUDIENCE;
 const REALM = process.env.REALM;
 
+const REDIRECT_URI = process.env.REDIRECT_URI;
+const HOME_URI = process.env.HOME_URI;
+
 const auth0 = new AuthenticationClient({
     domain: DOMAIN,
     clientId: CLIENT_ID,
     clientSecret: CLIENT_SECRET,
 });
 
-async function register(email, password) {
-    try {
-        return await auth0.database.signUp({
-            email,
-            password,
-            connection: REALM,
-        });
-    } catch (error) {
-        throw new Error(error.message);
-    }
+function getLoginUri() {
+    const uri = new URL('/authorize', `https://${DOMAIN}`);
+
+    uri.searchParams.set('response_type', 'code');
+    uri.searchParams.set('client_id', CLIENT_ID);
+    uri.searchParams.set('redirect_uri', REDIRECT_URI);
+    uri.searchParams.set('scope', 'openid profile email offline_access');
+    uri.searchParams.set('audience', AUDIENCE);
+    uri.searchParams.set('connection', REALM);
+
+    return uri;
 }
 
-async function login(email, password) {
-    try {
-        return await auth0.oauth.passwordGrant({
-            username: email,
-            password,
-            realm: REALM,
-            audience: AUDIENCE,
-            scope: 'openid profile email offline_access',
-        });
-    } catch (error) {
-        throw new Error(error.message);
-    }
+function getLogoutUri() {
+    const uri = new URL('/v2/logout', `https://${DOMAIN}`);
+    uri.searchParams.set('client_id', CLIENT_ID);
+    uri.searchParams.set('returnTo', HOME_URI);
+
+    return uri;
 }
 
-async function logout(refreshToken) {
-    try {
-        await auth0.oauth.revokeRefreshToken({
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
-            token: refreshToken,
-        });
-    } catch (error) {
-        throw new Error(error.message);
-    }
+async function exchangeCode(code) {
+    return await auth0.oauth.authorizationCodeGrant({
+        code,
+        redirect_uri: REDIRECT_URI,
+        audience: AUDIENCE,
+        scope: 'openid profile email offline_access',
+    });
 }
 
 async function refresh(refreshToken) {
-    try {
-        return await auth0.oauth.refreshTokenGrant({
-            refresh_token: refreshToken,
-            scope: 'openid profile email offline_access',
-        });
-    } catch (error) {
-        throw new Error(error.message);
-    }
+    return await auth0.oauth.refreshTokenGrant({
+        refresh_token: refreshToken,
+    });
 }
 
 async function getCurrentUser(accessToken) {
-    try {
-        const response = await fetch(`https://${DOMAIN}/userinfo`, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-        });
+    console.log("accessToken: " + accessToken);
 
-        return await response.json();
-    } catch (error) {
-        throw new Error(error.message);
-    }
+    const response = await fetch(`https://${DOMAIN}/userinfo`, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    });
+
+    return await response.json();
 }
 
 module.exports = {
-    register, login, logout, refresh, getCurrentUser
+    getLoginUri, getLogoutUri,
+    exchangeCode, refresh,
+    getCurrentUser
 };

@@ -26,20 +26,17 @@ async function decryptToken(encryptedToken) {
 
 function decrypt() {
     return async (req, res, next) => {
-        const authHeader = req.headers['authorization'];
+        const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith(TOKEN_PREFIX)) {
             return res.status(401).send('Provided token format is not valid');
         }
 
         try {
             const encryptedToken = authHeader.split(' ')[1];
-            console.log("encrypted: " + encryptedToken);
 
             const decrypted = await decryptToken(encryptedToken);
-            const accessToken = TOKEN_PREFIX + decrypted;
-            req.headers['authorization'] = accessToken;
+            req.headers.authorization = TOKEN_PREFIX + decrypted;
 
-            console.log("decrypted: " + accessToken);
             next();
         } catch (error) {
             console.error('Token can not be decrypted: ', error);
