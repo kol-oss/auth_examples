@@ -51,20 +51,7 @@ async function refresh(refreshToken) {
     });
 }
 
-async function getCurrentUser(accessToken) {
-    console.log("accessToken: " + accessToken);
-
-    const response = await fetch(`https://${DOMAIN}/userinfo`, {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-        },
-    });
-
-    return await response.json();
-}
-
 module.exports = {
     getLoginUri, getLogoutUri,
     exchangeCode, refresh,
-    getCurrentUser
 };
