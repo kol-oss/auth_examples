@@ -126,15 +126,16 @@
     const accessTokenFromParams = urlParams.get('access_token');
 
     if (accessTokenFromParams) {
+        const expiresIn = urlParams.get('expires_in');
+        const expiresAt = Date.now() + JSON.parse(expiresIn) * 1000;
         session = {
             access_token: 'Bearer ' + accessTokenFromParams,
-            expires_in: JSON.parse(urlParams.get('expires_in')),
+            expires_in: JSON.parse(expiresIn),
+            expires_at: expiresAt,
             username: JSON.parse(urlParams.get('username')),
         };
         sessionStorage.setItem('session', JSON.stringify(session));
         window.history.replaceState({}, document.title, '/');
-
-        startTokenExpirationInterval();
     }
 
     if (session?.access_token) {
@@ -143,6 +144,8 @@
 
         loginBtn.style.opacity = '0';
         logoutLink.style.opacity = '1';
+
+        startTokenExpirationInterval();
     }
 
     function validateConnection() {
@@ -167,14 +170,9 @@
     }
 
     function startTokenExpirationInterval() {
-        let start = Date.now();
         refreshInterval = setInterval(() => {
-            const currentTime = Date.now() - REFRESH_DIFF;
-            const expirationTime = start + session.expires_in * 1000;
-
-            if (currentTime > expirationTime) {
+            if (Date.now() > session.expires_at - REFRESH_DIFF) {
                 refreshToken();
-                start = Date.now();
             }
         }, CHECK_EXPIRATION_TIMEOUT);
     }
@@ -183,7 +181,11 @@
         try {
             const res = await axios.post('/api/refresh', {}, {withCredentials: true});
             res.data.access_token = 'Bearer ' + res.data.access_token;
+
+            const expiresAt = Date.now() + res.data.expires_in * 1000;
             session = {...session, ...res.data};
+            session.expires_at = expiresAt;
+
             sessionStorage.setItem('session', JSON.stringify(session));
 
             console.log('Refreshing completed, new access token: ' + session.access_token);
