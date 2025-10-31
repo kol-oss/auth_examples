@@ -68,11 +68,14 @@ app.get('/api/logout', async (req, res) => {
 });
 
 app.post('/api/refresh', async (req, res) => {
-    const {refreshToken} = req.body;
+    const oldRefreshToken = req.cookies?.refresh_token;
+    if (!oldRefreshToken) {
+        return res.status(401).send('refresh_token cookie is empty');
+    }
 
     let apiResponse;
     try {
-        apiResponse = refresh(refreshToken);
+        apiResponse = await refresh(oldRefreshToken);
     } catch (error) {
         res.status(401).json({message: 'Refresh failed: ' + error.message});
         return;
@@ -80,7 +83,7 @@ app.post('/api/refresh', async (req, res) => {
 
     const {access_token, refresh_token, expires_in} = apiResponse.data;
     if (!access_token || !refresh_token) {
-        return res.status(401).send({message: 'accessTokenFromParams or refresh_token value after refreshing is empty'});
+        return res.status(401).send({message: 'access_token or refresh_token value after refreshing is empty'});
     }
 
     res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, {httpOnly: true, secure: true});
