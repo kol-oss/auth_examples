@@ -16,7 +16,7 @@ function authenticated() {
 }
 
 async function decryptToken(encryptedToken) {
-    const { importPKCS8, compactDecrypt } = await import('jose');
+    const {importPKCS8, compactDecrypt} = await import('jose');
 
     const privateKey = await importPKCS8(PRIVATE_KEY_PEM, ALGORITHM);
     const {plaintext} = await compactDecrypt(encryptedToken, privateKey);
@@ -45,4 +45,9 @@ function decrypt() {
     };
 }
 
-module.exports = {authenticated, decrypt};
+async function decodeToken(token) {
+    const {decodeJwt} = await import('jose');
+    return decodeJwt(token);
+}
+
+module.exports = {authenticated, decrypt, decodeToken};

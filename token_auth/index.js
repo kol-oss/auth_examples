@@ -9,7 +9,7 @@ const {
     getLogoutUri,
     exchangeCode
 } = require('./handlers');
-const {authenticated, decrypt} = require('./auth');
+const {authenticated, decrypt, decodeToken} = require('./auth');
 const cookieParser = require('cookie-parser');
 
 const PORT = 3000;
@@ -61,7 +61,7 @@ app.post('/api/refresh', async (req, res) => {
 
 app.get('/api/login/callback', async (req, res) => {
     const {code} = req.query;
-    console.log('Received code ' + code);
+    console.log("Received code " + code);
 
     let apiResponse;
     try {
@@ -71,12 +71,17 @@ app.get('/api/login/callback', async (req, res) => {
         return;
     }
 
-    const {access_token, refresh_token, expires_in} = apiResponse.data;
-    console.log('Exchanged code for token ' + access_token);
+    const {access_token, refresh_token, expires_in, id_token} = apiResponse.data;
+    console.log("Exchanged code for token " + access_token);
 
     const url = new URL(HOME_URI);
     url.searchParams.set('access_token', access_token);
     url.searchParams.set('expires_in', JSON.stringify(expires_in));
+
+    if (id_token) {
+        const user = await decodeToken(id_token);
+        url.searchParams.set('username', JSON.stringify(user.nickname));
+    }
 
     res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, {httpOnly: true, secure: true});
     res.redirect(url.toString());

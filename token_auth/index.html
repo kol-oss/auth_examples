@@ -128,7 +128,8 @@
     if (accessTokenFromParams) {
         session = {
             access_token: 'Bearer ' + accessTokenFromParams,
-            expires_in: JSON.parse(urlParams.get('expires_in'))
+            expires_in: JSON.parse(urlParams.get('expires_in')),
+            username: JSON.parse(urlParams.get('username')),
         };
         sessionStorage.setItem('session', JSON.stringify(session));
         window.history.replaceState({}, document.title, '/');
@@ -137,7 +138,7 @@
     }
 
     if (session?.access_token) {
-        loginHeader.textContent = 'Welcome Back!';
+        loginHeader.textContent = `Welcome, ${session.username}!`;
         validateConnection();
 
         loginBtn.style.opacity = '0';
